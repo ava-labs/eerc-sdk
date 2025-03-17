@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": ["src", "index.d.ts"],
+  "exclude": ["node_modules", "dist"],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "incremental": false,
+
+    // Type checking
+    "strict": true,
+    "useDefineForClassFields": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // JavaScript support
+    "allowJs": true,
+    "checkJs": true,
+
+    // Interop constraints
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": false,
+    "importHelpers": false,
+
+    // Language and environment
+    "moduleResolution": "node",
+    "module": "esnext",
+    "target": "es2021",
+    "lib": ["es2022", "dom"],
+    "jsx": "react-jsx",
+
+    // Emit
+    "declaration": true,
+    "sourceMap": true,
+
+    // Other
+    "skipLibCheck": true,
+    "resolveJsonModule": false
+  }
+}

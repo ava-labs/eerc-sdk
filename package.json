@@ -1,0 +1,62 @@
+{
+  "name": "@avalabs/ac-eerc-sdk-next",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md", "package.json"],
+  "devDependencies": {
+    "@babel/core": "7.4.0",
+    "@babel/preset-env": "7.1.6",
+    "@biomejs/biome": "^1.8.3",
+    "@jest/types": "^29.6.3",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.5.0",
+    "@types/react": "^18.3.3",
+    "jest": "^29.7.0",
+    "jest-mock-extended": "^3.0.7",
+    "react": "^18.3.1",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.4",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.2.4",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "viem": "^2.0.0",
+    "wagmi": "^2.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "blake-hash": "^2.0.0",
+    "js-sha256": "^0.11.0",
+    "poseidon-lite": "^0.3.0",
+    "react-use": "^17.5.0"
+  },
+  "description": "SDK for the Encrypted ERC",
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ava-labs/ac-eerc-sdk.git"
+  },
+  "author": "avalabs",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ava-labs/ac-eerc-sdk/issues"
+  },
+  "homepage": "https://github.com/ava-labs/ac-eerc-sdk#readme"
+}
