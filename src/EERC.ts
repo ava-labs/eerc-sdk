@@ -490,7 +490,7 @@ export class EERC {
       abi: this.encryptedErcAbi,
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
-      args: [tokenAddress, [...cipher, ...authKey, nonce]],
+      args: [amount, tokenAddress, [...cipher, ...authKey, nonce]],
       account: this.wallet.account,
     });
 
