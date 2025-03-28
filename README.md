@@ -8,9 +8,9 @@
 </a>
 </p>
 
-<h1 align="center">Encrypted ERC SDK</h1>
+<h1 align="center">Encrypted ERC SDK (next)</h1>
 <p align="center">
-  This is an official Ava Labs repo for the eERC SDK.
+ This is an official Ava Labs repo for the eERC SDK. This package is designed to support latest version of wagmi and viem for developer experience. 
 </p>
 
 ## Getting Started 🚀

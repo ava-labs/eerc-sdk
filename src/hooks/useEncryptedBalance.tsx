@@ -208,14 +208,15 @@ export function useEncryptedBalance(
       try {
         if (!eerc) throw new Error("EERC not initialized");
         if (!tokenAddress) throw new Error("Token address is not set");
+        if (!decimals) throw new Error("Decimals not set");
 
-        return eerc.deposit(amount, tokenAddress);
+        return eerc.deposit(amount, tokenAddress, decimals);
       } catch (error) {
         console.error("Deposit failed", error);
         throw error;
       }
     },
-    [eerc, tokenAddress],
+    [eerc, tokenAddress, decimals],
   );
 
   /**

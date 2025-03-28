@@ -37,6 +37,8 @@ export function useEERC(
       isAuditor: false,
     },
   });
+  const [generatedDecryptionKey, setGeneratedDecryptionKey] =
+    useState<string>("");
 
   const updateEercState = useCallback(
     (updates: Partial<IEERCState>) =>
@@ -283,6 +285,11 @@ export function useEERC(
         return;
 
       try {
+        const correctKey = decryptionKey || generatedDecryptionKey;
+        if (!correctKey) {
+          logMessage("Decryption key is not set");
+        }
+
         const _eerc = new EERC(
           client,
           wallet,
@@ -290,7 +297,7 @@ export function useEERC(
           eercState.registrarAddress as `0x${string}`,
           eercState.isConverter,
           prove,
-          decryptionKey,
+          correctKey,
         );
 
         if (mounted) {
@@ -326,6 +333,7 @@ export function useEERC(
     prove,
     eercState.isInitialized,
     updateEercState,
+    generatedDecryptionKey,
   ]);
 
   /**
@@ -354,11 +362,16 @@ export function useEERC(
    * generate decryption key
    * @returns string - decryption key
    */
-  const generateDecryptionKey = useCallback(() => {
+  const generateDecryptionKey = useCallback(async () => {
     if (!eerc) {
       throw new Error("EERC not initialized");
     }
-    return eerc.generateDecryptionKey();
+    // generate decryption key
+    const key = await eerc.generateDecryptionKey();
+    // set decryption key
+    setGeneratedDecryptionKey(key);
+    // return decryption key
+    return key;
   }, [eerc]);
 
   /**
