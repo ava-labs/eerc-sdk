@@ -6,6 +6,7 @@ import {
   type WalletClient,
   decodeFunctionData,
   erc20Abi,
+  formatUnits,
   isAddress,
 } from "viem";
 import { BabyJub } from "./crypto/babyjub";
@@ -140,12 +141,14 @@ export class EERC {
    * function to generate the decryption key
    */
   public async generateDecryptionKey() {
-    if (!this.wallet || !this.client) {
+    if (!this.wallet || !this.client || !this.wallet.account?.address) {
       this.throwError("Missing wallet or client!");
     }
 
     try {
-      const message = MESSAGES.REGISTER(this.wallet?.account?.address || "");
+      const message = MESSAGES.REGISTER(
+        this.wallet.account?.address as `0x${string}`,
+      );
 
       // deriving the decryption key from the user signature
       const signature = await this.wallet.signMessage({
@@ -155,6 +158,9 @@ export class EERC {
       const key = getPrivateKeyFromSignature(signature);
 
       this.decryptionKey = key;
+
+      const formatted = formatKeyForCurve(this.decryptionKey);
+      this.publicKey = this.curve.generatePublicKey(formatted);
 
       return key;
     } catch (error) {
@@ -174,7 +180,7 @@ export class EERC {
       !this.wallet ||
       !this.client ||
       !this.contractAddress ||
-      !this.wallet.account
+      !this.wallet.account?.address
     )
       throw new Error("Missing client, wallet or contract address!");
 
@@ -231,10 +237,8 @@ export class EERC {
         args: [proof, input.publicInputs],
         account: this.wallet.account,
       });
-      const transactionHash = await this.wallet.writeContract({
-        ...request,
-        account: this.wallet.account,
-      });
+
+      const transactionHash = await this.wallet.writeContract(request);
 
       this.decryptionKey = key;
       this.publicKey = publicKey;
@@ -318,8 +322,6 @@ export class EERC {
       mintAmount,
     ].map(String);
 
-    console.log(JSON.stringify({ privateInputs, publicInputs }));
-
     const { proof } = await this.proveFunc(
       JSON.stringify({ privateInputs, publicInputs }),
       "MINT",
@@ -334,7 +336,7 @@ export class EERC {
       account: this.wallet.account,
     });
 
-    // write the transaction to the contract
+    // send the transaction
     const transactionHash = await this.wallet.writeContract(request);
 
     return { transactionHash };
@@ -370,6 +372,8 @@ export class EERC {
       );
 
     logMessage("Sending transaction");
+
+    // simulate the transaction
     const { request } = await this.client.simulateContract({
       abi: this.encryptedErcAbi,
       address: this.contractAddress,
@@ -377,6 +381,8 @@ export class EERC {
       args: [proof, publicInputs, senderBalancePCT],
       account: this.wallet.account,
     });
+
+    // send the transaction
     const transactionHash = await this.wallet.writeContract(request);
 
     return { transactionHash };
@@ -435,21 +441,22 @@ export class EERC {
       args: [to, tokenId, proof, publicInputs, senderBalancePCT],
       account: this.wallet.account,
     });
+
     const transactionHash = await this.wallet.writeContract(request);
+    logMessage("Transaction sent");
 
     return { transactionHash, receiverEncryptedAmount, senderEncryptedAmount };
   }
 
   // function to deposit tokens to the contract
-  async deposit(amount: bigint, tokenAddress: string) {
+  async deposit(amount: bigint, tokenAddress: string, eERCDecimals: bigint) {
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
-    if (!this.wallet || !this.wallet.account)
-      throw new Error("Missing wallet!");
+    if (!this.wallet.account?.address) throw new Error("Missing wallet!");
 
     logMessage("Depositing tokens to the contract");
     // check if the user has enough approve amount
     const approveAmount = await this.fetchUserApprove(
-      this.wallet?.account?.address,
+      this.wallet.account.address,
       tokenAddress,
     );
 
@@ -457,10 +464,23 @@ export class EERC {
       throw new Error("Insufficient approval amount!");
     }
 
+    // need to convert erc20 decimals -> eERC decimals (2)
+    const decimals = await this.client.readContract({
+      abi: erc20Abi,
+      address: tokenAddress as `0x${string}`,
+      functionName: "decimals",
+    });
+
+    const parsedAmount = this.convertTokenDecimals(
+      amount,
+      Number(decimals),
+      Number(eERCDecimals),
+    );
+
     // user creates new balance pct for the deposit amount
     const { cipher, nonce, authKey } =
       await this.poseidon.processPoseidonEncryption({
-        inputs: [amount],
+        inputs: [BigInt(parsedAmount)],
         publicKey: this.publicKey as Point,
       });
 
@@ -470,10 +490,11 @@ export class EERC {
       abi: this.encryptedErcAbi,
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
-      args: [amount, tokenAddress, [...cipher, ...authKey, nonce]],
+      args: [tokenAddress, [...cipher, ...authKey, nonce]],
       account: this.wallet.account,
     });
 
+    // send the transaction
     const transactionHash = await this.wallet.writeContract(request);
 
     return { transactionHash };
@@ -549,9 +570,10 @@ export class EERC {
         abi: this.encryptedErcAbi,
         address: this.contractAddress as `0x${string}`,
         functionName: "withdraw",
-        args: [amount, tokenId, proof, publicInputs, userBalancePCT],
+        args: [tokenId, proof, publicInputs, userBalancePCT],
         account: this.wallet.account,
       });
+
       const transactionHash = await this.wallet.writeContract(request);
 
       return { transactionHash };
@@ -863,10 +885,6 @@ export class EERC {
     const currentBlock = await this.client.getBlockNumber();
     const BOUND = 1000n;
 
-    if (!this.wallet || !this.wallet.account) {
-      throw new Error("Missing wallet!");
-    }
-
     // Fetch logs where the user was the oldAuditor
     const logs = (await this.client.getLogs({
       address: this.contractAddress,
@@ -890,12 +908,12 @@ export class EERC {
       const { oldAuditor, newAuditor } = log.args;
 
       if (
-        newAuditor.toLowerCase() === this.wallet.account.address.toLowerCase()
+        newAuditor.toLowerCase() === this.wallet?.account?.address.toLowerCase()
       ) {
         currentStart = log.blockNumber;
       } else if (
         oldAuditor.toLowerCase() ===
-          this.wallet.account.address.toLowerCase() &&
+          this.wallet?.account?.address.toLowerCase() &&
         currentStart !== null
       ) {
         return true;
@@ -950,7 +968,7 @@ export class EERC {
             type: "event",
           },
           args: {
-            auditorAddress: this.wallet.account?.address,
+            auditorAddress: this.wallet?.account?.address,
           },
         })) as NamedEvents[];
 
@@ -994,6 +1012,34 @@ export class EERC {
       return result.sort(
         (a, b) => Number(b.blockNumber) - Number(a.blockNumber),
       ) as DecryptedTransaction[];
+    } catch (e) {
+      throw new Error(e as string);
+    }
+  }
+
+  private convertTokenDecimals(
+    amount: bigint,
+    fromDecimals: number,
+    toDecimals: number,
+  ) {
+    try {
+      if (fromDecimals === toDecimals) {
+        return formatUnits(amount, toDecimals);
+      }
+
+      // decimal difference
+      const diff = fromDecimals - toDecimals;
+
+      let convertedAmount = 0n;
+      if (diff > 0) {
+        const scalingFactor = 10n ** BigInt(diff);
+        convertedAmount = amount / scalingFactor;
+      } else {
+        const scalingFactor = 10n ** BigInt(Math.abs(diff));
+        convertedAmount = amount * BigInt(scalingFactor);
+      }
+
+      return convertedAmount;
     } catch (e) {
       throw new Error(e as string);
     }
