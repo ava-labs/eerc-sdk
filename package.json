@@ -1,5 +1,5 @@
 {
-  "name": "@avalabs/ac-eerc-sdk-next",
+  "name": "@avalabs/eerc-sdk-next",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.cjs",
