@@ -242,6 +242,11 @@ export function useEERC(
     }
   }, [eerc, checkIsAuditor]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to reset the key when wallet changes
+  useEffect(() => {
+    setGeneratedDecryptionKey("");
+  }, [wallet?.account?.address]);
+
   // check is all data fetched
   useEffect(() => {
     if (
