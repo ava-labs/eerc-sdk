@@ -63,6 +63,10 @@ export function useEERC(
     [eercState.registrarAddress],
   );
 
+  const circuitURLsKey = useMemo(() => {
+    return JSON.stringify(circuitURLs);
+  }, [circuitURLs]);
+
   /**
    * get user data for checking is user registered
    */
@@ -265,7 +269,7 @@ export function useEERC(
     updateEercState,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: circuitURLsKey is a stable key for circuitURLs
   useEffect(() => {
     let mounted = true;
 
@@ -330,7 +334,7 @@ export function useEERC(
     eercState.isInitialized,
     updateEercState,
     generatedDecryptionKey,
-    JSON.stringify(circuitURLs),
+    circuitURLsKey,
   ]);
 
   /**
