@@ -341,12 +341,12 @@ export function useEERC(
    * check if the decryption key should be generated
    * @returns boolean - returns true if user is registered and decryption key is not set
    */
-  const shouldGenerateDecryptionKey = useMemo(() => {
+  const isDecryptionKeySet = useMemo(() => {
     if (!eerc) {
       return false;
     }
-    return eercState.isRegistered && !eerc?.isDecryptionKeySet;
-  }, [eerc, eercState.isRegistered]);
+    return eerc?.isDecryptionKeySet;
+  }, [eerc]);
 
   /**
    * register user to the EERC contract
@@ -455,12 +455,12 @@ export function useEERC(
     auditorPublicKey: eercState.auditorPublicKey, // auditor's public key
     isAuditorKeySet: Boolean(
       eercState.auditorPublicKey.length > 0 &&
-        eercState.auditorPublicKey[0] !== 0n &&
-        eercState.auditorPublicKey[1] !== 0n,
+      eercState.auditorPublicKey[0] !== 0n &&
+      eercState.auditorPublicKey[1] !== 0n,
     ),
     name: eercState.name, // EERC name, (only for stand-alone version)
     symbol: eercState.symbol, // EERC symbol, (only for stand-alone version)
-    shouldGenerateDecryptionKey,
+    isDecryptionKeySet,
     areYouAuditor,
     hasBeenAuditor: eercState.hasBeenAuditor,
 

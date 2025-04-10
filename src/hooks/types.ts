@@ -36,7 +36,7 @@ export type EERCHookResult = {
   isAuditorKeySet: boolean;
   name: string;
   symbol: string;
-  shouldGenerateDecryptionKey: boolean;
+  isDecryptionKeySet: boolean;
   areYouAuditor: boolean;
   hasBeenAuditor: {
     isChecking: boolean;
