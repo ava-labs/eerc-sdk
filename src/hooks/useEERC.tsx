@@ -455,8 +455,8 @@ export function useEERC(
     auditorPublicKey: eercState.auditorPublicKey, // auditor's public key
     isAuditorKeySet: Boolean(
       eercState.auditorPublicKey.length > 0 &&
-      eercState.auditorPublicKey[0] !== 0n &&
-      eercState.auditorPublicKey[1] !== 0n,
+        eercState.auditorPublicKey[0] !== 0n &&
+        eercState.auditorPublicKey[1] !== 0n,
     ),
     name: eercState.name, // EERC name, (only for stand-alone version)
     symbol: eercState.symbol, // EERC symbol, (only for stand-alone version)
