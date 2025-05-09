@@ -60,7 +60,7 @@ export class EERC {
     registrarAddress: `0x${string}`,
     isConverter: boolean,
     circuitURLs: CircuitURLs,
-    decryptionKey?: string,
+    decryptionKey?: string
   ) {
     this.client = client;
     this.wallet = wallet;
@@ -145,7 +145,7 @@ export class EERC {
 
     try {
       const message = MESSAGES.REGISTER(
-        this.wallet.account?.address as `0x${string}`,
+        this.wallet.account?.address as `0x${string}`
       );
 
       // deriving the decryption key from the user signature
@@ -192,7 +192,7 @@ export class EERC {
 
       {
         const contractPublicKey = await this.fetchPublicKey(
-          this.wallet.account.address,
+          this.wallet.account.address
         );
 
         // if user already registered return the key
@@ -255,7 +255,7 @@ export class EERC {
   async privateMint(
     recipient: `0x${string}`,
     mintAmount: bigint,
-    auditorPublicKey: Point,
+    auditorPublicKey: Point
   ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     this.validateAddress(recipient);
@@ -345,19 +345,59 @@ export class EERC {
     amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
-    auditorPublicKey: bigint[],
+    auditorPublicKey: bigint[]
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     this.validateAmount(amount, decryptedBalance);
     logMessage("Burning encrypted tokens");
 
-    const { proof, senderBalancePCT } = await this.generateTransferProof(
-      BURN_USER.address,
-      amount,
-      encryptedBalance,
-      decryptedBalance,
-      auditorPublicKey,
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+
+    // encrypt the amount with the user public key
+    const { cipher: encryptedAmount } = await this.curve.encryptMessage(
+      this.publicKey as Point,
+      amount
     );
+
+    // create pct for the auditor
+    const {
+      cipher: auditorCiphertext,
+      nonce: auditorPoseidonNonce,
+      authKey: auditorAuthKey,
+      encryptionRandom: auditorEncryptionRandom,
+    } = await this.poseidon.processPoseidonEncryption({
+      inputs: [amount],
+      publicKey: auditorPublicKey as Point,
+    });
+
+    const senderNewBalance = decryptedBalance - amount;
+    const {
+      cipher: userCiphertext,
+      nonce: userPoseidonNonce,
+      authKey: userAuthKey,
+    } = await this.poseidon.processPoseidonEncryption({
+      inputs: [senderNewBalance],
+      publicKey: this.publicKey as Point,
+    });
+
+    // prepare circuit inputs
+    const input = {
+      ValueToBurn: amount,
+      SenderPrivateKey: privateKey,
+      SenderPublicKey: this.publicKey,
+      SenderBalance: decryptedBalance,
+      SenderBalanceC1: encryptedBalance.slice(0, 2),
+      SenderBalanceC2: encryptedBalance.slice(2, 4),
+      SenderVTBC1: encryptedAmount.c1,
+      SenderVTBC2: encryptedAmount.c2,
+      AuditorPublicKey: auditorPublicKey,
+      AuditorPCT: auditorCiphertext,
+      AuditorPCTAuthKey: auditorAuthKey,
+      AuditorPCTNonce: auditorPoseidonNonce,
+      AuditorPCTRandom: auditorEncryptionRandom,
+    };
+
+    const proof = await this.generateProof(input, "BURN");
 
     logMessage("Sending transaction");
 
@@ -366,7 +406,7 @@ export class EERC {
       abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateBurn",
-      args: [proof, senderBalancePCT],
+      args: [proof, [...userCiphertext, ...userAuthKey, userPoseidonNonce]],
       account: this.wallet.account,
     });
 
@@ -392,7 +432,7 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
-    tokenAddress?: string,
+    tokenAddress?: string
   ): Promise<{
     transactionHash: `0x${string}`;
     receiverEncryptedAmount: string[];
@@ -417,7 +457,7 @@ export class EERC {
       amount,
       encryptedBalance,
       decryptedBalance,
-      auditorPublicKey,
+      auditorPublicKey
     );
 
     logMessage("Sending transaction");
@@ -444,7 +484,7 @@ export class EERC {
     // check if the user has enough approve amount
     const approveAmount = await this.fetchUserApprove(
       this.wallet.account.address,
-      tokenAddress,
+      tokenAddress
     );
 
     if (approveAmount < amount) {
@@ -461,7 +501,7 @@ export class EERC {
     const parsedAmount = this.convertTokenDecimals(
       amount,
       Number(decimals),
-      Number(eERCDecimals),
+      Number(eERCDecimals)
     );
 
     // user creates new balance pct for the deposit amount
@@ -493,7 +533,7 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
-    tokenAddress: string,
+    tokenAddress: string
   ): Promise<OperationResult> {
     // only work if eerc is converter
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
@@ -577,7 +617,7 @@ export class EERC {
     amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
-    auditorPublicKey: bigint[],
+    auditorPublicKey: bigint[]
   ): Promise<{
     proof: eERC_Proof;
     senderBalancePCT: string[];
@@ -585,6 +625,9 @@ export class EERC {
     senderEncryptedAmount: string[];
   }> {
     try {
+      if (auditorPublicKey[0] === 0n && auditorPublicKey[1] === 0n)
+        throw new Error("Auditor is not set for the contract!");
+
       this.validateAddress(to);
       this.validateAmount(amount, decryptedBalance);
 
@@ -597,7 +640,7 @@ export class EERC {
       // 1. encrypt the transfer amount for sender
       const { cipher: encryptedAmountSender } = await this.curve.encryptMessage(
         this.publicKey as Point,
-        amount,
+        amount
       );
 
       // 2. encrypt the transfer amount for receiver
@@ -764,7 +807,7 @@ export class EERC {
   calculateTotalBalance(
     eGCT: EGCT,
     amountPCTs: AmountPCT[],
-    balancePCT: bigint[],
+    balancePCT: bigint[]
   ) {
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
@@ -788,7 +831,7 @@ export class EERC {
       });
       const expectedPoint = this.curve.mulWithScalar(
         this.curve.Base8,
-        totalBalance,
+        totalBalance
       );
 
       if (
@@ -874,7 +917,7 @@ export class EERC {
         log.args.oldAuditor.toLowerCase() ===
           this.wallet.account?.address.toLowerCase() ||
         log.args.newAuditor.toLowerCase() ===
-          this.wallet.account?.address.toLowerCase(),
+          this.wallet.account?.address.toLowerCase()
     );
 
     let currentStart = null;
@@ -985,7 +1028,7 @@ export class EERC {
 
       // reverse the array to get the latest transactions first
       return result.sort(
-        (a, b) => Number(b.blockNumber) - Number(a.blockNumber),
+        (a, b) => Number(b.blockNumber) - Number(a.blockNumber)
       ) as DecryptedTransaction[];
     } catch (e) {
       throw new Error(e as string);
@@ -995,7 +1038,7 @@ export class EERC {
   private convertTokenDecimals(
     amount: bigint,
     fromDecimals: number,
-    toDecimals: number,
+    toDecimals: number
   ) {
     try {
       if (fromDecimals === toDecimals) {
@@ -1023,7 +1066,7 @@ export class EERC {
   private async generateProof(
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     input: any,
-    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER" | "BURN"
   ): Promise<eERC_Proof> {
     let wasm: string;
     let zkey: string;
@@ -1045,6 +1088,10 @@ export class EERC {
         wasm = this.circuitURLs.transfer.wasm;
         zkey = this.circuitURLs.transfer.zkey;
         break;
+      case "BURN":
+        wasm = this.circuitURLs.burn.wasm;
+        zkey = this.circuitURLs.burn.zkey;
+        break;
       default:
         throw new Error("Invalid operation");
     }
@@ -1062,11 +1109,14 @@ export class EERC {
       await snarkjs.groth16.fullProve(
         input,
         absoluteWasmURL.toString(),
-        absoluteZkeyURL.toString(),
+        absoluteZkeyURL.toString()
       );
 
     const rawCalldata = JSON.parse(
-      `[${await snarkjs.groth16.exportSolidityCallData(snarkProof, publicSignals)}]`,
+      `[${await snarkjs.groth16.exportSolidityCallData(
+        snarkProof,
+        publicSignals
+      )}]`
     );
 
     const end = performance.now();
