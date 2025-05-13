@@ -7,7 +7,6 @@ import {
   type WalletClient,
   decodeFunctionData,
   erc20Abi,
-  formatUnits,
   isAddress,
 } from "viem";
 import { BabyJub } from "./crypto/babyjub";
@@ -1039,10 +1038,10 @@ export class EERC {
     amount: bigint,
     fromDecimals: number,
     toDecimals: number,
-  ) {
+  ): bigint {
     try {
       if (fromDecimals === toDecimals) {
-        return formatUnits(amount, toDecimals);
+        return amount;
       }
 
       // decimal difference
