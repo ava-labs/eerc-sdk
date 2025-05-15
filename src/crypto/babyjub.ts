@@ -190,7 +190,6 @@ export class BabyJub {
     const c1xInverse = [this.field.mul(c1x[0], -1n), c1x[1]] as Point;
     return this.addPoints(cipher.c2, c1xInverse);
   }
-
   /**
    * generates random bytes depending on the environment
    * @param bytes number of bytes
@@ -204,10 +203,11 @@ export class BabyJub {
     ) {
       return window.crypto.getRandomValues(new Uint8Array(bytes));
     }
-    if (typeof require !== "undefined") {
+    try {
       const { randomBytes } = await import("node:crypto");
       return new Uint8Array(randomBytes(bytes).buffer);
+    } catch (_) {
+      throw new Error("Unable to find a secure random number generator");
     }
-    throw new Error("Unable to find a secure random number generator");
   }
 }
