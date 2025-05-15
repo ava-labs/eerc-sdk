@@ -7,7 +7,6 @@ import {
   type WalletClient,
   decodeFunctionData,
   erc20Abi,
-  formatUnits,
   isAddress,
 } from "viem";
 import { BabyJub } from "./crypto/babyjub";
@@ -351,13 +350,53 @@ export class EERC {
     this.validateAmount(amount, decryptedBalance);
     logMessage("Burning encrypted tokens");
 
-    const { proof, senderBalancePCT } = await this.generateTransferProof(
-      BURN_USER.address,
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+
+    // encrypt the amount with the user public key
+    const { cipher: encryptedAmount } = await this.curve.encryptMessage(
+      this.publicKey as Point,
       amount,
-      encryptedBalance,
-      decryptedBalance,
-      auditorPublicKey,
     );
+
+    // create pct for the auditor
+    const {
+      cipher: auditorCiphertext,
+      nonce: auditorPoseidonNonce,
+      authKey: auditorAuthKey,
+      encryptionRandom: auditorEncryptionRandom,
+    } = await this.poseidon.processPoseidonEncryption({
+      inputs: [amount],
+      publicKey: auditorPublicKey as Point,
+    });
+
+    const senderNewBalance = decryptedBalance - amount;
+    const {
+      cipher: userCiphertext,
+      nonce: userPoseidonNonce,
+      authKey: userAuthKey,
+    } = await this.poseidon.processPoseidonEncryption({
+      inputs: [senderNewBalance],
+      publicKey: this.publicKey as Point,
+    });
+
+    // prepare circuit inputs
+    const input = {
+      ValueToBurn: amount,
+      SenderPrivateKey: privateKey,
+      SenderPublicKey: this.publicKey,
+      SenderBalance: decryptedBalance,
+      SenderBalanceC1: encryptedBalance.slice(0, 2),
+      SenderBalanceC2: encryptedBalance.slice(2, 4),
+      SenderVTBC1: encryptedAmount.c1,
+      SenderVTBC2: encryptedAmount.c2,
+      AuditorPublicKey: auditorPublicKey,
+      AuditorPCT: auditorCiphertext,
+      AuditorPCTAuthKey: auditorAuthKey,
+      AuditorPCTNonce: auditorPoseidonNonce,
+      AuditorPCTRandom: auditorEncryptionRandom,
+    };
+
+    const proof = await this.generateProof(input, "BURN");
 
     logMessage("Sending transaction");
 
@@ -366,7 +405,7 @@ export class EERC {
       abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateBurn",
-      args: [proof, senderBalancePCT],
+      args: [proof, [...userCiphertext, ...userAuthKey, userPoseidonNonce]],
       account: this.wallet.account,
     });
 
@@ -585,6 +624,9 @@ export class EERC {
     senderEncryptedAmount: string[];
   }> {
     try {
+      if (auditorPublicKey[0] === 0n && auditorPublicKey[1] === 0n)
+        throw new Error("Auditor is not set for the contract!");
+
       this.validateAddress(to);
       this.validateAmount(amount, decryptedBalance);
 
@@ -996,10 +1038,10 @@ export class EERC {
     amount: bigint,
     fromDecimals: number,
     toDecimals: number,
-  ) {
+  ): bigint {
     try {
       if (fromDecimals === toDecimals) {
-        return formatUnits(amount, toDecimals);
+        return amount;
       }
 
       // decimal difference
@@ -1023,7 +1065,7 @@ export class EERC {
   private async generateProof(
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     input: any,
-    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER" | "BURN",
   ): Promise<eERC_Proof> {
     let wasm: string;
     let zkey: string;
@@ -1044,6 +1086,10 @@ export class EERC {
       case "TRANSFER":
         wasm = this.circuitURLs.transfer.wasm;
         zkey = this.circuitURLs.transfer.zkey;
+        break;
+      case "BURN":
+        wasm = this.circuitURLs.burn.wasm;
+        zkey = this.circuitURLs.burn.zkey;
         break;
       default:
         throw new Error("Invalid operation");
@@ -1066,7 +1112,10 @@ export class EERC {
       );
 
     const rawCalldata = JSON.parse(
-      `[${await snarkjs.groth16.exportSolidityCallData(snarkProof, publicSignals)}]`,
+      `[${await snarkjs.groth16.exportSolidityCallData(
+        snarkProof,
+        publicSignals,
+      )}]`,
     );
 
     const end = performance.now();

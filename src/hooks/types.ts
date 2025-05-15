@@ -120,6 +120,10 @@ export type CircuitURLs = {
     wasm: string;
     zkey: string;
   };
+  burn: {
+    wasm: string;
+    zkey: string;
+  };
 };
 
 export type eERC_Proof = {
