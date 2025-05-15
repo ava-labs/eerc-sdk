@@ -1095,21 +1095,45 @@ export class EERC {
         throw new Error("Invalid operation");
     }
 
-    const absoluteWasmURL = wasm.startsWith("/")
-      ? new URL(wasm, import.meta.url)
-      : new URL(wasm);
+    if (!wasm || !zkey) {
+      throw new Error(
+        `Missing ${!wasm ? "WASM" : "ZKey"} URL for ${operation} operation`,
+      );
+    }
 
-    const absoluteZkeyURL = zkey.startsWith("/")
-      ? new URL(zkey, import.meta.url)
-      : new URL(zkey);
+    let wasmPath = "";
+    let zkeyPath = "";
+
+    // Check for Node.js environment
+    const isBrowser =
+      typeof window !== "undefined" && typeof window.document !== "undefined";
+    const isNode = !isBrowser;
+
+    if (isNode) {
+      // Check if file exists locally
+      const fs = await import("node:fs");
+      if (fs.existsSync(wasm) && fs.existsSync(zkey)) {
+        wasmPath = wasm;
+        zkeyPath = zkey;
+      }
+    }
+
+    if (!wasmPath || !zkeyPath) {
+      const absoluteWasmURL = wasm.startsWith("/")
+        ? new URL(wasm, import.meta.url)
+        : new URL(wasm);
+
+      const absoluteZkeyURL = zkey.startsWith("/")
+        ? new URL(zkey, import.meta.url)
+        : new URL(zkey);
+
+      wasmPath = absoluteWasmURL.toString();
+      zkeyPath = absoluteZkeyURL.toString();
+    }
 
     const now = performance.now();
     const { proof: snarkProof, publicSignals } =
-      await snarkjs.groth16.fullProve(
-        input,
-        absoluteWasmURL.toString(),
-        absoluteZkeyURL.toString(),
-      );
+      await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
 
     const rawCalldata = JSON.parse(
       `[${await snarkjs.groth16.exportSolidityCallData(
