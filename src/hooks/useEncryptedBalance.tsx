@@ -136,7 +136,10 @@ export function useEncryptedBalance(
   const privateMint = useCallback(
     (recipient: `0x${string}`, amount: bigint) => {
       if (!eerc || !auditorPublicKey) throw new Error("EERC not initialized");
-      if (auditorPublicKey.some((key) => key === 0n))
+      if (
+        !auditorPublicKey.length ||
+        auditorPublicKey.some((key) => key === 0n)
+      )
         throw new Error("Auditor public key is not set");
 
       return eerc.privateMint(recipient, amount, auditorPublicKey as Point);
@@ -154,7 +157,10 @@ export function useEncryptedBalance(
       try {
         if (!eerc || !balanceState.encrypted.length)
           throw new Error("EERC not initialized");
-        if (auditorPublicKey.some((key) => key === 0n))
+        if (
+          !auditorPublicKey.length ||
+          auditorPublicKey.some((key) => key === 0n)
+        )
           throw new Error("Auditor public key is not set");
         if (balanceState.decrypted < amount || amount <= 0n)
           throw new Error("Invalid amount");
@@ -184,7 +190,10 @@ export function useEncryptedBalance(
       try {
         if (!eerc || !balanceState.encrypted.length)
           throw new Error("EERC not initialized");
-        if (auditorPublicKey.some((key) => key === 0n))
+        if (
+          !auditorPublicKey.length ||
+          auditorPublicKey.some((key) => key === 0n)
+        )
           throw new Error("Auditor public key is not set");
         if (balanceState.decrypted < amount || amount <= 0n)
           throw new Error("Invalid amount");
@@ -216,7 +225,10 @@ export function useEncryptedBalance(
         if (!eerc) throw new Error("EERC not initialized");
         if (!tokenAddress) throw new Error("Token address is not set");
         if (!decimals) throw new Error("Decimals not set");
-        if (auditorPublicKey.some((key) => key === 0n))
+        if (
+          !auditorPublicKey.length ||
+          auditorPublicKey.some((key) => key === 0n)
+        )
           throw new Error("Auditor public key is not set");
 
         return eerc.deposit(amount, tokenAddress, decimals);
@@ -238,7 +250,10 @@ export function useEncryptedBalance(
       try {
         if (!eerc) throw new Error("EERC not initialized");
         if (!tokenAddress) throw new Error("Token address is not set");
-        if (auditorPublicKey.some((key) => key === 0n))
+        if (
+          !auditorPublicKey.length ||
+          auditorPublicKey.some((key) => key === 0n)
+        )
           throw new Error("Auditor public key is not set");
 
         return eerc.withdraw(
