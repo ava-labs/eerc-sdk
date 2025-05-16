@@ -812,7 +812,7 @@ export class EERC {
 
     let totalBalance = 0n;
 
-    if (balancePCT.some((e) => e !== 0n)) {
+    if (balancePCT?.some((e) => e !== 0n)) {
       const decryptedBalancePCT = this.decryptPCT(balancePCT);
       totalBalance += decryptedBalancePCT;
     }

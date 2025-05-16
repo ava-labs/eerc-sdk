@@ -1,6 +1,6 @@
 {
   "name": "@avalabs/eerc-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -39,8 +39,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "publish": "npm run build && npm publish"
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "blake-hash": "^2.0.0",
