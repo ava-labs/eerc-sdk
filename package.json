@@ -39,8 +39,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "publish": "npm run build && npm publish"
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "blake-hash": "^2.0.0",
