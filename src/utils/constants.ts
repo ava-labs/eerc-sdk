@@ -100,3 +100,108 @@ export const PRIVATE_BURN_EVENT = {
   name: "PrivateBurn",
   type: "event",
 };
+
+export const PRIVATE_MINT_WITH_MESSAGE_ABI = [
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[24]",
+            name: "publicSignals",
+            type: "uint256[24]",
+          },
+        ],
+        internalType: "struct MintProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "privateMint",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
+
+// export const PRIVATE_MINT_ABI = [
+//   {
+//     inputs: [
+//       {
+//         internalType: "address",
+//         name: "user",
+//         type: "address",
+//       },
+//       {
+//         components: [
+//           {
+//             components: [
+//               {
+//                 internalType: "uint256[2]",
+//                 name: "a",
+//                 type: "uint256[2]",
+//               },
+//               {
+//                 internalType: "uint256[2][2]",
+//                 name: "b",
+//                 type: "uint256[2][2]",
+//               },
+//               {
+//                 internalType: "uint256[2]",
+//                 name: "c",
+//                 type: "uint256[2]",
+//               },
+//             ],
+//             internalType: "struct ProofPoints",
+//             name: "proofPoints",
+//             type: "tuple",
+//           },
+//           {
+//             internalType: "uint256[24]",
+//             name: "publicSignals",
+//             type: "uint256[24]",
+//           },
+//         ],
+//         internalType: "struct MintProof",
+//         name: "proof",
+//         type: "tuple",
+//       },
+//     ],
+//     name: "privateMint",
+//     outputs: [],
+//     stateMutability: "nonpayable",
+//     type: "function",
+//   },
+// ];

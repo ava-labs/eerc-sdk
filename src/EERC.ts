@@ -30,7 +30,9 @@ import {
   PRIVATE_TRANSFER_EVENT,
   REGISTRAR_ABI,
   SNARK_FIELD_SIZE,
+  PRIVATE_MINT_WITH_MESSAGE_ABI,
 } from "./utils";
+import { encryptMetadata } from "./helpers/metadata";
 
 export class EERC {
   private client: PublicClient;
@@ -255,11 +257,17 @@ export class EERC {
     recipient: `0x${string}`,
     mintAmount: bigint,
     auditorPublicKey: Point,
+    message?: string,
   ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     this.validateAddress(recipient);
     this.validateAmount(mintAmount);
     logMessage("Minting encrypted tokens");
+
+    // encrypt the message if provided
+    const encryptedMessage = message
+      ? await encryptMetadata(this.poseidon, auditorPublicKey, message)
+      : "";
 
     // fetch the receiver public key
     const receiverPublicKey = await this.fetchPublicKey(recipient);
@@ -315,12 +323,12 @@ export class EERC {
 
     const proof = await this.generateProof(input, "MINT");
 
-    // simulate the transaction
+    // simulate the transaction - use specific function signature based on whether message is provided
     const { request } = await this.client.simulateContract({
-      abi: this.encryptedErcAbi,
+      abi: message ? PRIVATE_MINT_WITH_MESSAGE_ABI : this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateMint",
-      args: [recipient, proof],
+      args: message ? [recipient, proof, encryptedMessage] : [recipient, proof],
       account: this.wallet.account,
     });
 

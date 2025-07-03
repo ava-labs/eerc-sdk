@@ -67,6 +67,7 @@ export type UseEncryptedBalanceHookResult = {
   privateMint: (
     recipient: `0x${string}`,
     amount: bigint,
+    message?: string,
   ) => Promise<OperationResult>;
   privateBurn: (amount: bigint) => Promise<OperationResult>;
   privateTransfer: (

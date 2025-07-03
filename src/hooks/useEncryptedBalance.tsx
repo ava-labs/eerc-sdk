@@ -131,10 +131,11 @@ export function useEncryptedBalance(
    * mint amount of encrypted tokens to the user
    * @param recipient - recipient address
    * @param amount - amount to mint
+   * @param message - message to encrypt
    * @returns object - returns transaction hash
    */
   const privateMint = useCallback(
-    (recipient: `0x${string}`, amount: bigint) => {
+    (recipient: `0x${string}`, amount: bigint, message?: string) => {
       if (!eerc || !auditorPublicKey) throw new Error("EERC not initialized");
       if (
         !auditorPublicKey.length ||
@@ -142,7 +143,12 @@ export function useEncryptedBalance(
       )
         throw new Error("Auditor public key is not set");
 
-      return eerc.privateMint(recipient, amount, auditorPublicKey as Point);
+      return eerc.privateMint(
+        recipient,
+        amount,
+        auditorPublicKey as Point,
+        message,
+      );
     },
     [eerc, auditorPublicKey],
   );
