@@ -64,22 +64,24 @@ export type UseEncryptedBalanceHookResult = {
   encryptedBalance: bigint[];
   auditorPublicKey: bigint[];
   decimals: bigint;
+  decryptMessage: (transactionHash: string) => Promise<DecryptedMetadata>;
   privateMint: (
     recipient: `0x${string}`,
     amount: bigint,
     message?: string,
   ) => Promise<OperationResult>;
-  privateBurn: (amount: bigint) => Promise<OperationResult>;
+  privateBurn: (amount: bigint, message?: string) => Promise<OperationResult>;
   privateTransfer: (
     to: string,
     amount: bigint,
+    message?: string,
   ) => Promise<{
     transactionHash: `0x${string}`;
     receiverEncryptedAmount: string[];
     senderEncryptedAmount: string[];
   }>;
-  withdraw: (amount: bigint) => Promise<OperationResult>;
-  deposit: (amount: bigint) => Promise<OperationResult>;
+  withdraw: (amount: bigint, message?: string) => Promise<OperationResult>;
+  deposit: (amount: bigint, message?: string) => Promise<OperationResult>;
   refetchBalance: () => void;
 };
 
@@ -134,4 +136,11 @@ export type eERC_Proof = {
     c: string[];
   };
   publicSignals: string[];
+};
+
+export type DecryptedMetadata = {
+  decryptedMessage: string;
+  messageType: string;
+  messageFrom: `0x${string}`;
+  messageTo: `0x${string}`;
 };

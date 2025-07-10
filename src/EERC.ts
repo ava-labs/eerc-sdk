@@ -15,24 +15,30 @@ import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
 import type { AmountPCT, EGCT, Point } from "./crypto/types";
 import { logMessage } from "./helpers";
+import { decryptMetadata, encryptMetadata } from "./helpers/metadata";
 import type {
   CircuitURLs,
+  DecryptedMetadata,
   DecryptedTransaction,
   OperationResult,
   eERC_Proof,
 } from "./hooks/types";
 import {
   BURN_USER,
+  DEPOSIT_WITH_MESSAGE_ABI,
   ENCRYPTED_ERC_ABI,
   MESSAGES,
   PRIVATE_BURN_EVENT,
+  PRIVATE_BURN_WITH_MESSAGE_ABI,
+  PRIVATE_MESSAGE_EVENT,
   PRIVATE_MINT_EVENT,
+  PRIVATE_MINT_WITH_MESSAGE_ABI,
   PRIVATE_TRANSFER_EVENT,
   REGISTRAR_ABI,
   SNARK_FIELD_SIZE,
-  PRIVATE_MINT_WITH_MESSAGE_ABI,
+  TRANSFER_WITH_MESSAGE_ABI,
+  WITHDRAW_WITH_MESSAGE_ABI,
 } from "./utils";
-import { encryptMetadata } from "./helpers/metadata";
 
 export class EERC {
   private client: PublicClient;
@@ -264,13 +270,13 @@ export class EERC {
     this.validateAmount(mintAmount);
     logMessage("Minting encrypted tokens");
 
-    // encrypt the message if provided
-    const encryptedMessage = message
-      ? await encryptMetadata(this.poseidon, auditorPublicKey, message)
-      : "";
-
     // fetch the receiver public key
     const receiverPublicKey = await this.fetchPublicKey(recipient);
+
+    // encrypt the message if provided
+    const encryptedMessage = message
+      ? await encryptMetadata(this.poseidon, receiverPublicKey, message)
+      : "";
 
     // 1. encrypt the total mint amount
     const { cipher: encryptedAmount, random: encryptedAmountRandom } =
@@ -323,7 +329,7 @@ export class EERC {
 
     const proof = await this.generateProof(input, "MINT");
 
-    // simulate the transaction - use specific function signature based on whether message is provided
+    // simulate the transaction
     const { request } = await this.client.simulateContract({
       abi: message ? PRIVATE_MINT_WITH_MESSAGE_ABI : this.encryptedErcAbi,
       address: this.contractAddress,
@@ -353,10 +359,16 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
+    message?: string,
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     this.validateAmount(amount, decryptedBalance);
     logMessage("Burning encrypted tokens");
+
+    // encrypt the message if provided
+    const encryptedMessage = message
+      ? await encryptMetadata(this.poseidon, this.publicKey, message)
+      : "";
 
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
@@ -410,10 +422,16 @@ export class EERC {
 
     // simulate the transaction
     const { request } = await this.client.simulateContract({
-      abi: this.encryptedErcAbi,
+      abi: message ? PRIVATE_BURN_WITH_MESSAGE_ABI : this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateBurn",
-      args: [proof, [...userCiphertext, ...userAuthKey, userPoseidonNonce]],
+      args: message
+        ? [
+            proof,
+            [...userCiphertext, ...userAuthKey, userPoseidonNonce],
+            encryptedMessage,
+          ]
+        : [proof, [...userCiphertext, ...userAuthKey, userPoseidonNonce]],
       account: this.wallet.account,
     });
 
@@ -440,6 +458,7 @@ export class EERC {
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
     tokenAddress?: string,
+    message?: string,
   ): Promise<{
     transactionHash: `0x${string}`;
     receiverEncryptedAmount: string[];
@@ -447,6 +466,13 @@ export class EERC {
   }> {
     this.validateAddress(to);
     this.validateAmount(amount, decryptedBalance);
+
+    const receiverPublicKey = await this.fetchPublicKey(to);
+
+    // encrypt the message if provided
+    const encryptedMessage = message
+      ? await encryptMetadata(this.poseidon, receiverPublicKey, message)
+      : "";
 
     let tokenId = 0n;
     if (tokenAddress) {
@@ -469,10 +495,12 @@ export class EERC {
 
     logMessage("Sending transaction");
     const { request } = await this.client.simulateContract({
-      abi: this.encryptedErcAbi,
+      abi: message ? TRANSFER_WITH_MESSAGE_ABI : this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "transfer",
-      args: [to, tokenId, proof, senderBalancePCT],
+      args: message
+        ? [to, tokenId, proof, senderBalancePCT, encryptedMessage]
+        : [to, tokenId, proof, senderBalancePCT],
       account: this.wallet.account,
     });
 
@@ -483,7 +511,12 @@ export class EERC {
   }
 
   // function to deposit tokens to the contract
-  async deposit(amount: bigint, tokenAddress: string, eERCDecimals: bigint) {
+  async deposit(
+    amount: bigint,
+    tokenAddress: string,
+    eERCDecimals: bigint,
+    message?: string,
+  ) {
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
     if (!this.wallet.account?.address) throw new Error("Missing wallet!");
 
@@ -497,6 +530,11 @@ export class EERC {
     if (approveAmount < amount) {
       throw new Error("Insufficient approval amount!");
     }
+
+    // encrypt the message if provided
+    const encryptedMessage = message
+      ? await encryptMetadata(this.poseidon, this.publicKey, message)
+      : "";
 
     // need to convert erc20 decimals -> eERC decimals (2)
     const decimals = await this.client.readContract({
@@ -521,10 +559,17 @@ export class EERC {
     logMessage("Sending transaction");
 
     const { request } = await this.client.simulateContract({
-      abi: this.encryptedErcAbi,
+      abi: message ? DEPOSIT_WITH_MESSAGE_ABI : this.encryptedErcAbi,
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
-      args: [amount, tokenAddress, [...cipher, ...authKey, nonce]],
+      args: message
+        ? [
+            amount,
+            tokenAddress,
+            [...cipher, ...authKey, nonce],
+            encryptedMessage,
+          ]
+        : [amount, tokenAddress, [...cipher, ...authKey, nonce]],
       account: this.wallet.account,
     });
 
@@ -541,6 +586,7 @@ export class EERC {
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
     tokenAddress: string,
+    message?: string,
   ): Promise<OperationResult> {
     // only work if eerc is converter
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
@@ -548,6 +594,11 @@ export class EERC {
 
     try {
       const tokenId = await this.fetchTokenId(tokenAddress);
+
+      // encrypt the message if provided
+      const encryptedMessage = message
+        ? await encryptMetadata(this.poseidon, this.publicKey, message)
+        : "";
 
       const newBalance = decryptedBalance - amount;
       const privateKey = formatKeyForCurve(this.decryptionKey);
@@ -591,14 +642,21 @@ export class EERC {
       const proof = await this.generateProof(input, "WITHDRAW");
 
       const { request } = await this.client.simulateContract({
-        abi: this.encryptedErcAbi,
+        abi: message ? WITHDRAW_WITH_MESSAGE_ABI : this.encryptedErcAbi,
         address: this.contractAddress as `0x${string}`,
         functionName: "withdraw",
-        args: [
-          tokenId,
-          proof,
-          [...senderCipherText, ...senderAuthKey, senderPoseidonNonce],
-        ],
+        args: message
+          ? [
+              tokenId,
+              proof,
+              [...senderCipherText, ...senderAuthKey, senderPoseidonNonce],
+              encryptedMessage,
+            ]
+          : [
+              tokenId,
+              proof,
+              [...senderCipherText, ...senderAuthKey, senderPoseidonNonce],
+            ],
         account: this.wallet.account,
       });
 
@@ -850,6 +908,62 @@ export class EERC {
     }
 
     return totalBalance;
+  }
+
+  /**
+   * function to decrypt the private message from the transaction logs
+   * @param transactionHash transaction hash
+   * @returns decrypted message
+   */
+  public async decryptMessage(transactionHash: string) {
+    const tx = await this.client.getTransaction({
+      hash: transactionHash as `0x${string}`,
+    });
+
+    const logs = await this.client.getLogs({
+      event: {
+        ...PRIVATE_MESSAGE_EVENT,
+        type: "event",
+      },
+      address: this.contractAddress,
+      fromBlock: tx.blockNumber,
+      toBlock: tx.blockNumber,
+    });
+
+    if (!logs || logs.length === 0) {
+      throw new Error("No private message found for this transaction");
+    }
+
+    const { encryptedMsg, messageType, messageFrom, messageTo } = (
+      logs[0].args as {
+        metadata: {
+          encryptedMsg: string;
+          messageType: string;
+          messageFrom: `0x${string}`;
+          messageTo: `0x${string}`;
+        };
+      }
+    ).metadata;
+
+    if (!encryptedMsg) {
+      throw new Error("No encrypted message found in the transaction logs");
+    }
+
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+    const decryptedMessage = await decryptMetadata(
+      this.poseidon,
+      privateKey,
+      encryptedMsg,
+    );
+
+    const metadata: DecryptedMetadata = {
+      decryptedMessage,
+      messageType,
+      messageFrom,
+      messageTo,
+    };
+
+    return metadata;
   }
 
   /**

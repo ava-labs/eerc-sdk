@@ -1,4 +1,4 @@
-import { pad, toHex, concat } from "viem";
+import { concat, pad, toHex } from "viem";
 import type { Poseidon } from "../crypto/poseidon";
 import type { Point } from "../crypto/types";
 
@@ -82,8 +82,14 @@ export function int2str(input: bigint[]): string {
   return buf.toString("utf8").replace(/\u0000/g, "");
 }
 
-// uses poseidon ecdh encryption to encrypt the message, just like PCTs but ciphertext is added to the bottom of the message
-// after the message is encrypted, it is converted to bytes
+/**
+ * uses poseidon ecdh encryption to encrypt the message, just like PCTs but ciphertext is added to the bottom of the message
+ * after the message is encrypted, it is converted to bytes
+ * @param poseidon poseidon instance
+ * @param publicKey public key
+ * @param message message to encrypt
+ * @returns encrypted message
+ */
 export const encryptMetadata = async (
   poseidon: Poseidon,
   publicKey: bigint[],
@@ -117,38 +123,46 @@ export const encryptMetadata = async (
   return encryptedMessageBytes;
 };
 
-// export const decryptMetadata = (
-//   privateKey: bigint,
-//   encryptedMessage: string,
-// ): string => {
-//   const hexData = encryptedMessage.startsWith("0x")
-//     ? encryptedMessage.slice(2)
-//     : encryptedMessage;
+/**
+ * decrypts the metadata from the encrypted message
+ * @param poseidon poseidon instance
+ * @param privateKey private key
+ * @param encryptedMessage encrypted message
+ * @returns decrypted message
+ */
+export const decryptMetadata = async (
+  poseidon: Poseidon,
+  privateKey: bigint,
+  encryptedMessage: string,
+): Promise<string> => {
+  const hexData = encryptedMessage.startsWith("0x")
+    ? encryptedMessage.slice(2)
+    : encryptedMessage;
 
-//   const lengthHex = `0x${hexData.slice(0, 64)}`;
-//   const nonceHex = `0x${hexData.slice(64, 128)}`;
-//   const authKey0Hex = `0x${hexData.slice(128, 192)}`;
-//   const authKey1Hex = `0x${hexData.slice(192, 256)}`;
+  const lengthHex = `0x${hexData.slice(0, 64)}`;
+  const nonceHex = `0x${hexData.slice(64, 128)}`;
+  const authKey0Hex = `0x${hexData.slice(128, 192)}`;
+  const authKey1Hex = `0x${hexData.slice(192, 256)}`;
 
-//   const length = BigInt(lengthHex);
-//   const nonce = BigInt(nonceHex);
-//   const authKey: [bigint, bigint] = [BigInt(authKey0Hex), BigInt(authKey1Hex)];
+  const length = BigInt(lengthHex);
+  const nonce = BigInt(nonceHex);
+  const authKey: [bigint, bigint] = [BigInt(authKey0Hex), BigInt(authKey1Hex)];
 
-//   const ciphertextHex = hexData.slice(256);
-//   const ciphertext: bigint[] = [];
+  const ciphertextHex = hexData.slice(256);
+  const ciphertext: bigint[] = [];
 
-//   for (let i = 0; i < ciphertextHex.length; i += 64) {
-//     const chunkHex = `0x${ciphertextHex.slice(i, i + 64)}`;
-//     ciphertext.push(BigInt(chunkHex));
-//   }
+  for (let i = 0; i < ciphertextHex.length; i += 64) {
+    const chunkHex = `0x${ciphertextHex.slice(i, i + 64)}`;
+    ciphertext.push(BigInt(chunkHex));
+  }
 
-//   const decryptedFieldElements = processPoseidonDecryption(
-//     ciphertext,
-//     authKey,
-//     nonce,
-//     privateKey,
-//     Number(length),
-//   );
+  const decryptedFieldElements = await poseidon.processPoseidonDecryption({
+    privateKey,
+    authKey,
+    cipher: ciphertext,
+    nonce,
+    length: Number(length),
+  });
 
-//   return int2str(decryptedFieldElements);
-// };
+  return int2str(decryptedFieldElements);
+};
