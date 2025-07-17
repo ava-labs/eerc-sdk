@@ -260,6 +260,53 @@ export const ENCRYPTED_ERC_ABI = [
       {
         indexed: true,
         internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "messageFrom",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "messageTo",
+            type: "address",
+          },
+          {
+            internalType: "string",
+            name: "messageType",
+            type: "string",
+          },
+          {
+            internalType: "bytes",
+            name: "encryptedMsg",
+            type: "bytes",
+          },
+        ],
+        indexed: false,
+        internalType: "struct Metadata",
+        name: "metadata",
+        type: "tuple",
+      },
+    ],
+    name: "PrivateMessage",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
         name: "user",
         type: "address",
       },
@@ -724,6 +771,34 @@ export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [
       {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "tokenAddress",
+        type: "address",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "amountPCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "deposit",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "address",
         name: "user",
         type: "address",
@@ -920,6 +995,63 @@ export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [
       {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[19]",
+            name: "publicSignals",
+            type: "uint256[19]",
+          },
+        ],
+        internalType: "struct BurnProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "privateBurn",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         components: [
           {
             components: [
@@ -1012,6 +1144,58 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[24]",
+            name: "publicSignals",
+            type: "uint256[24]",
+          },
+        ],
+        internalType: "struct MintProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "privateMint",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "registrar",
     outputs: [
@@ -1027,6 +1211,24 @@ export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [],
     name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "sendEncryptedMetadata",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -1193,6 +1395,68 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[32]",
+            name: "publicSignals",
+            type: "uint256[32]",
+          },
+        ],
+        internalType: "struct TransferProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "transfer",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
         name: "newOwner",
         type: "address",
       },
@@ -1260,6 +1524,63 @@ export const ENCRYPTED_ERC_ABI = [
         internalType: "uint256[7]",
         name: "balancePCT",
         type: "uint256[7]",
+      },
+    ],
+    name: "withdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
       },
     ],
     name: "withdraw",

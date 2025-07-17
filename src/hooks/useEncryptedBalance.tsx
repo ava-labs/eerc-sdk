@@ -131,10 +131,11 @@ export function useEncryptedBalance(
    * mint amount of encrypted tokens to the user
    * @param recipient - recipient address
    * @param amount - amount to mint
+   * @param message - message to encrypt
    * @returns object - returns transaction hash
    */
   const privateMint = useCallback(
-    (recipient: `0x${string}`, amount: bigint) => {
+    (recipient: `0x${string}`, amount: bigint, message?: string) => {
       if (!eerc || !auditorPublicKey) throw new Error("EERC not initialized");
       if (
         !auditorPublicKey.length ||
@@ -142,7 +143,12 @@ export function useEncryptedBalance(
       )
         throw new Error("Auditor public key is not set");
 
-      return eerc.privateMint(recipient, amount, auditorPublicKey as Point);
+      return eerc.privateMint(
+        recipient,
+        amount,
+        auditorPublicKey as Point,
+        message,
+      );
     },
     [eerc, auditorPublicKey],
   );
@@ -153,7 +159,7 @@ export function useEncryptedBalance(
    * @returns object - returns transaction hash
    */
   const privateBurn = useCallback(
-    (amount: bigint) => {
+    (amount: bigint, message?: string) => {
       try {
         if (!eerc || !balanceState.encrypted.length)
           throw new Error("EERC not initialized");
@@ -170,6 +176,7 @@ export function useEncryptedBalance(
           balanceState.encrypted,
           balanceState.decrypted,
           auditorPublicKey as Point,
+          message,
         );
       } catch (error) {
         console.error("Private burn failed", error);
@@ -186,7 +193,7 @@ export function useEncryptedBalance(
    * @returns object - returns transaction hash
    */
   const privateTransfer = useCallback(
-    (to: string, amount: bigint) => {
+    (to: string, amount: bigint, message?: string) => {
       try {
         if (!eerc || !balanceState.encrypted.length)
           throw new Error("EERC not initialized");
@@ -205,6 +212,7 @@ export function useEncryptedBalance(
           balanceState.decrypted,
           auditorPublicKey,
           tokenAddress,
+          message,
         );
       } catch (error) {
         console.error("Private transfer failed", error);
@@ -220,7 +228,7 @@ export function useEncryptedBalance(
    * @returns object - returns transaction hash
    */
   const deposit = useCallback(
-    (amount: bigint) => {
+    (amount: bigint, message?: string) => {
       try {
         if (!eerc) throw new Error("EERC not initialized");
         if (!tokenAddress) throw new Error("Token address is not set");
@@ -231,7 +239,7 @@ export function useEncryptedBalance(
         )
           throw new Error("Auditor public key is not set");
 
-        return eerc.deposit(amount, tokenAddress, decimals);
+        return eerc.deposit(amount, tokenAddress, decimals, message);
       } catch (error) {
         console.error("Deposit failed", error);
         throw error;
@@ -246,7 +254,7 @@ export function useEncryptedBalance(
    * @returns object - returns transaction hash
    */
   const withdraw = useCallback(
-    (amount: bigint) => {
+    (amount: bigint, message?: string) => {
       try {
         if (!eerc) throw new Error("EERC not initialized");
         if (!tokenAddress) throw new Error("Token address is not set");
@@ -262,6 +270,7 @@ export function useEncryptedBalance(
           balanceState.decrypted,
           auditorPublicKey,
           tokenAddress,
+          message,
         );
       } catch (error) {
         console.error("Withdraw failed", error);
@@ -269,6 +278,14 @@ export function useEncryptedBalance(
       }
     },
     [eerc, balanceState, tokenAddress, auditorPublicKey],
+  );
+
+  const decryptMessage = useCallback(
+    (transactionHash: string) => {
+      if (!eerc) throw new Error("EERC not initialized");
+      return eerc.decryptMessage(transactionHash);
+    },
+    [eerc],
   );
 
   return {
@@ -284,6 +301,7 @@ export function useEncryptedBalance(
     privateTransfer,
     withdraw,
     deposit,
+    decryptMessage,
 
     // refetch
     refetchBalance,
