@@ -18,6 +18,7 @@ import { logMessage } from "./helpers";
 import { decryptMetadata, encryptMetadata } from "./helpers/metadata";
 import type {
   CircuitURLs,
+  DecryptedEvent,
   DecryptedMetadata,
   DecryptedTransaction,
   OperationResult,
@@ -28,8 +29,8 @@ import {
   DEPOSIT_WITH_MESSAGE_ABI,
   ENCRYPTED_ERC_ABI,
   MESSAGES,
+  PRIVATE_BURN_ABI,
   PRIVATE_BURN_EVENT,
-  PRIVATE_BURN_WITH_MESSAGE_ABI,
   PRIVATE_MESSAGE_EVENT,
   PRIVATE_MINT_EVENT,
   PRIVATE_MINT_WITH_MESSAGE_ABI,
@@ -422,11 +423,12 @@ export class EERC {
 
     // simulate the transaction
     const { request } = await this.client.simulateContract({
-      abi: message ? PRIVATE_BURN_WITH_MESSAGE_ABI : this.encryptedErcAbi,
+      abi: message ? this.encryptedErcAbi : PRIVATE_BURN_ABI,
       address: this.contractAddress,
       functionName: "privateBurn",
       args: message
         ? [
+            this.wallet.account?.address,
             proof,
             [...userCiphertext, ...userAuthKey, userPoseidonNonce],
             encryptedMessage,
@@ -964,6 +966,170 @@ export class EERC {
     };
 
     return metadata;
+  }
+
+  /**
+   * function to decrypt the transaction by its transaction hash
+   * @param transactionHash transaction hash
+   * @returns decrypted transaction data
+   */
+  public async decryptTransaction(
+    transactionHash: string,
+    tokenAddress?: `0x${string}`,
+  ): Promise<DecryptedEvent[]> {
+    if (!this.decryptionKey) {
+      throw new Error("Decryption key is required to decrypt transactions");
+    }
+
+    const tx = await this.client.getTransaction({
+      hash: transactionHash as `0x${string}`,
+    });
+
+    const results: DecryptedEvent[] = [];
+
+    try {
+      const decodedInputs = decodeFunctionData({
+        abi: this.encryptedErcAbi,
+        data: tx.input,
+      });
+
+      const functionName = decodedInputs?.functionName;
+      if (!functionName) return results;
+
+      const createBaseEvent = (
+        eventType: DecryptedEvent["eventType"],
+      ): Partial<DecryptedEvent> => ({
+        transactionHash,
+        blockNumber: tx.blockNumber as bigint,
+        eventType,
+        user: tx.from,
+      });
+
+      if (functionName === "transfer") {
+        const balancePCT = decodedInputs.args?.[3] as bigint[];
+        const toAddress = decodedInputs.args?.[0] as `0x${string}`;
+
+        try {
+          const balanceBeforeTx = await this.getHistoricalBalance(
+            tx.from,
+            tx.blockNumber - 1n,
+            tokenAddress,
+          );
+
+          const balanceAfterTx = this.decryptPCT(balancePCT);
+          const transactionAmount = balanceBeforeTx - balanceAfterTx;
+
+          results.push({
+            ...createBaseEvent("PrivateTransfer"),
+            from: tx.from,
+            to: toAddress,
+            decryptedAmount: transactionAmount.toString(),
+          } as DecryptedEvent);
+        } catch (error) {
+          results.push({
+            ...createBaseEvent("PrivateTransfer"),
+            from: tx.from,
+            to: toAddress,
+            decryptError: `Failed to decrypt transfer: ${error}`,
+          } as DecryptedEvent);
+        }
+      }
+
+      if (functionName === "privateBurn") {
+        const balancePCT = decodedInputs.args?.[1] as bigint[];
+
+        try {
+          const balanceBeforeTx = await this.getHistoricalBalance(
+            tx.from,
+            tx.blockNumber - 1n,
+            tokenAddress,
+          );
+
+          const balanceAfterTx = this.decryptPCT(balancePCT);
+          const transactionAmount = balanceBeforeTx - balanceAfterTx;
+
+          results.push({
+            ...createBaseEvent("PrivateBurn"),
+            user: tx.from,
+            amount: transactionAmount.toString(),
+          } as DecryptedEvent);
+        } catch (error) {
+          results.push({
+            ...createBaseEvent("PrivateBurn"),
+            user: tx.from,
+            decryptError: `Failed to decrypt burn: ${error}`,
+          } as DecryptedEvent);
+        }
+      }
+
+      if (functionName === "deposit" || functionName === "withdraw") {
+        const amount = decodedInputs.args?.[0] as bigint;
+        const eventType = functionName === "deposit" ? "Deposit" : "Withdraw";
+
+        try {
+          await this.client.getLogs({
+            address: this.contractAddress,
+            fromBlock: tx.blockNumber,
+            toBlock: tx.blockNumber,
+          });
+
+          results.push({
+            ...createBaseEvent(eventType as DecryptedEvent["eventType"]),
+            amount: amount.toString(),
+          } as DecryptedEvent);
+        } catch (error) {
+          console.warn(`Failed to fetch events for ${functionName}:`, error);
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to decode transaction:", error);
+
+      const basicEvent: DecryptedEvent = {
+        transactionHash,
+        blockNumber: tx.blockNumber as bigint,
+        eventType: "PrivateTransfer",
+        from: tx.from,
+        decryptError: `Failed to decode transaction: ${error}`,
+      };
+
+      results.push(basicEvent);
+    }
+
+    return results;
+  }
+
+  /**
+   * function to get historical balance at a specific block number
+   * @param userAddress user address to query
+   * @param blockNumber block number to query
+   * @param tokenAddress optional token address
+   * @returns historical balance
+   */
+  public async getHistoricalBalance(
+    userAddress: `0x${string}`,
+    blockNumber: bigint,
+    tokenAddress?: `0x${string}`,
+  ) {
+    const balance = await this.client.readContract({
+      address: this.contractAddress,
+      abi: this.encryptedErcAbi,
+      functionName: tokenAddress ? "getBalanceFromTokenAddress" : "balanceOf",
+      args: [userAddress, tokenAddress || 0n],
+      blockNumber,
+    });
+
+    const contractBalanceArray = balance as bigint[];
+    const elGamalCipherText = contractBalanceArray[0] as unknown as EGCT;
+    const amountPCTs = contractBalanceArray[2] as unknown as AmountPCT[];
+    const balancePCT = contractBalanceArray[3] as unknown as bigint[];
+
+    const totalBalance = this.calculateTotalBalance(
+      elGamalCipherText,
+      amountPCTs,
+      balancePCT,
+    );
+
+    return totalBalance;
   }
 
   /**
