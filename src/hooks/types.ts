@@ -24,6 +24,29 @@ export type DecryptedTransaction = {
   transactionHash: `0x${string}`;
 };
 
+export type DecryptedEvent = {
+  transactionHash: string;
+  blockNumber: bigint;
+  eventType:
+    | "PrivateTransfer"
+    | "Deposit"
+    | "Withdraw"
+    | "PrivateMint"
+    | "PrivateBurn";
+
+  decryptedAmount?: string;
+  decryptError?: string;
+
+  // For private transfer events
+  from?: `0x${string}`;
+  to?: `0x${string}`;
+  auditorAddress?: `0x${string}`;
+
+  // For deposit/withdraw events
+  user?: `0x${string}`;
+  amount?: string;
+};
+
 export type EERCHookResult = {
   isInitialized: boolean;
   isAllDataFetched: boolean;
@@ -65,6 +88,7 @@ export type UseEncryptedBalanceHookResult = {
   auditorPublicKey: bigint[];
   decimals: bigint;
   decryptMessage: (transactionHash: string) => Promise<DecryptedMetadata>;
+  decryptTransaction: (transactionHash: string) => Promise<DecryptedEvent[]>;
   privateMint: (
     recipient: `0x${string}`,
     amount: bigint,

@@ -360,14 +360,9 @@ export const WITHDRAW_WITH_MESSAGE_ABI = [
   },
 ];
 
-export const PRIVATE_BURN_WITH_MESSAGE_ABI = [
+export const PRIVATE_BURN_ABI = [
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "user",
-        type: "address",
-      },
       {
         components: [
           {
@@ -406,11 +401,6 @@ export const PRIVATE_BURN_WITH_MESSAGE_ABI = [
         internalType: "uint256[7]",
         name: "balancePCT",
         type: "uint256[7]",
-      },
-      {
-        internalType: "bytes",
-        name: "message",
-        type: "bytes",
       },
     ],
     name: "privateBurn",

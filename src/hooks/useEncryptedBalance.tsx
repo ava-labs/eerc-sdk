@@ -288,6 +288,14 @@ export function useEncryptedBalance(
     [eerc],
   );
 
+  const decryptTransaction = useCallback(
+    (transactionHash: string) => {
+      if (!eerc) throw new Error("EERC not initialized");
+      return eerc.decryptTransaction(transactionHash, tokenAddress);
+    },
+    [eerc, tokenAddress],
+  );
+
   return {
     decryptedBalance: balanceState.decrypted, // decrypted balance of the user
     parsedDecryptedBalance: balanceState.parsed, // parsed decrypted balance of the user
@@ -302,7 +310,7 @@ export function useEncryptedBalance(
     withdraw,
     deposit,
     decryptMessage,
-
+    decryptTransaction,
     // refetch
     refetchBalance,
   };
