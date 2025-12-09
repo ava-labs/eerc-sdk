@@ -7,4 +7,4 @@
 
 ## Getting Started 🚀
 
-Documentation can be found in [here](https://avacloud.gitbook.io/encrypted-erc/d87pGPcNAEEw9ISVd17M/usage/sdk-overview)
+Documentation can be found in [here](https://docs.avacloud.io/encrypted-erc/usage/sdk-overview)
